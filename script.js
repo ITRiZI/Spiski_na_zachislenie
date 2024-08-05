@@ -77,7 +77,7 @@ function displayTables(data) {
                 const tbody = document.createElement('tbody');
 
                 const headerRow = document.createElement('tr');
-                ['Name', 'Specialty', 'Grade', 'Exam', 'Funding', 'Form', 'Provided'].forEach(text => {
+                ['ФИО', 'Специальность', 'Средний балл', 'Экзамен', 'Финансирование', 'Форма обучения', 'Предоставлен'].forEach(text => {
                     const th = document.createElement('th');
                     th.textContent = text;
                     headerRow.appendChild(th);
