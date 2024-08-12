@@ -17,14 +17,14 @@ document.getElementById('fileInput').addEventListener('change', function(event) 
 // Обработчик события для показа таблиц
 document.getElementById('showTablesButton').addEventListener('click', function() {
     const showOriginalsOnly = document.getElementById('originalsOnlyCheckbox').checked;
-    const sortedData = distributeStudentsByPriority(dataArray, showOriginalsOnly);
+    const sortedData = distributeStudentsByAverageGrade(dataArray, showOriginalsOnly);
     displayTables(sortedData);
 });
 
 // Обработчик изменения состояния чекбокса
 document.getElementById('originalsOnlyCheckbox').addEventListener('change', function() {
     const showOriginalsOnly = this.checked;
-    const sortedData = distributeStudentsByPriority(dataArray, showOriginalsOnly);
+    const sortedData = distributeStudentsByAverageGrade(dataArray, showOriginalsOnly);
     displayTables(sortedData);
 });
 
@@ -51,10 +51,9 @@ function csvToArray(csv) {
     return data;
 }
 
-// Функция для распределения студентов по приоритетам
-// Функция для распределения студентов по приоритетам
-function distributeStudentsByPriority(data, showOriginalsOnly) {
-    const maxPriority = 9;
+// Функция для распределения студентов по специальностям и формам обучения
+function distributeStudentsByAverageGrade(data, showOriginalsOnly) {
+    const maxStudentsPerTable = 75; // Максимальное количество студентов в таблице
     const specialtyTables = {};
     const addedStudents = new Set(); // Множество для хранения уникальных студентов
     const grayCells = {}; // Хранит студентов, попадающих в серые ячейки
@@ -91,33 +90,31 @@ function distributeStudentsByPriority(data, showOriginalsOnly) {
         (student.exam === 'Да' || (specialtiesAllowingNoExam.includes(student.specialty) && student.exam === 'Нет'))
     ).sort((a, b) => b.grade - a.grade); // Сортируем по убыванию оценки
 
-    // Создаем таблицы для каждого приоритета
-    for (let priority = 1; priority <= maxPriority; priority++) {
-        for (const student of students) {
-            if (student.priority === priority && (!showOriginalsOnly || student.provided === 'Оригинал') && !addedStudents.has(student.name)) {
-                const specialtyKey = `${student.specialty}-${student.funding}-${student.form}`;
-                
-                if (!specialtyTables[specialtyKey]) {
-                    specialtyTables[specialtyKey] = [];
-                }
+    // Создаем таблицы для каждого специальности и формы
+    students.forEach(student => {
+        if (!showOriginalsOnly || student.provided === 'Оригинал') {
+            const specialtyKey = `${student.specialty}-${student.funding}-${student.form}`;
+            
+            if (!specialtyTables[specialtyKey]) {
+                specialtyTables[specialtyKey] = [];
+            }
 
-                // Добавляем студента, если место еще есть в топ 75
-                if (specialtyTables[specialtyKey].length < 75) {
-                    student.priorityNumber = priority;
-                    specialtyTables[specialtyKey].push(student);
-                    addedStudents.add(student.name);
-                } else {
-                    // Помечаем студентов для серых ячеек
-                    if (!grayCells[student.name]) {
-                        grayCells[student.name] = [];
-                    }
-                    grayCells[student.name].push(student);
+            // Добавляем студента в таблицу, если место еще есть
+            if (specialtyTables[specialtyKey].length < maxStudentsPerTable) {
+                student.priorityNumber = student.priority;
+                specialtyTables[specialtyKey].push(student);
+                addedStudents.add(student.name);
+            } else {
+                // Помечаем студентов для серых ячеек
+                if (!grayCells[student.name]) {
+                    grayCells[student.name] = [];
                 }
+                grayCells[student.name].push(student);
             }
         }
-    }
+    });
 
-    // Дублирование студентов, попадающих в серые ячейки, по всем специальностям
+    // Дублирование студентов, попадающих в серые ячейки
     const studentsInWhiteCells = new Set();
     for (const key in specialtyTables) {
         const studentsInTable = specialtyTables[key];
@@ -132,7 +129,7 @@ function distributeStudentsByPriority(data, showOriginalsOnly) {
         const studentList = grayCells[studentName];
         for (const student of studentList) {
             if (studentsInWhiteCells.has(student.name)) {
-                for (let priority = 2; priority <= maxPriority; priority++) { // Начинаем с приоритета 2
+                for (let priority = 2; priority <= 9; priority++) { // Начинаем с приоритета 2
                     if (student.priority === priority) {
                         const specialtyKey = `${student.specialty}-${student.funding}-${student.form}`;
                         
@@ -141,7 +138,7 @@ function distributeStudentsByPriority(data, showOriginalsOnly) {
                         }
 
                         // Добавление студента в список до достижения 75 человек
-                        if (specialtyTables[specialtyKey].length < 75) {
+                        if (specialtyTables[specialtyKey].length < maxStudentsPerTable) {
                             student.priorityNumber = priority;
                             specialtyTables[specialtyKey].push(student);
                             addedStudents.add(student.name);
@@ -155,7 +152,7 @@ function distributeStudentsByPriority(data, showOriginalsOnly) {
     // Заполняем оставшиеся места студентами, которые еще не попали в таблицы
     for (const student of students) {
         if (!addedStudents.has(student.name)) {
-            for (let priority = 1; priority <= maxPriority; priority++) {
+            for (let priority = 1; priority <= 9; priority++) {
                 if (student.priority === priority) {
                     const specialtyKey = `${student.specialty}-${student.funding}-${student.form}`;
                     
@@ -164,7 +161,7 @@ function distributeStudentsByPriority(data, showOriginalsOnly) {
                     }
 
                     // Добавление студента в список до достижения 75 человек
-                    if (specialtyTables[specialtyKey].length < 75) {
+                    if (specialtyTables[specialtyKey].length < maxStudentsPerTable) {
                         student.priorityNumber = priority;
                         specialtyTables[specialtyKey].push(student);
                         addedStudents.add(student.name);
@@ -178,9 +175,6 @@ function distributeStudentsByPriority(data, showOriginalsOnly) {
 
     return specialtyTables;
 }
-
-
-
 
 // Функция для отображения таблиц
 function displayTables(data) {
@@ -283,7 +277,6 @@ function displayTables(data) {
 
 // Функция для переключения порядка сортировки
 function toggleSortOrder(data, key, index) {
-    let sortOrder = dataArray.sortOrder || {};
     let order = sortOrder[key] || 'desc'; // По умолчанию по убыванию
     let newOrder = order === 'desc' ? 'asc' : 'desc';
     sortOrder[key] = newOrder;
@@ -297,7 +290,6 @@ function toggleSortOrder(data, key, index) {
         return 0;
     });
 
-    dataArray.sortOrder = sortOrder;
     displayTables(data);
 }
 
@@ -346,4 +338,3 @@ async function downloadPDF() {
     // Сохранение PDF
     doc.save('students.pdf');
 }
-document.getElementById('downloadPDFButton').addEventListener('click', downloadPDF);
