@@ -57,7 +57,9 @@ function distributeStudentsByPriority(data, showOriginalsOnly) {
     const maxPriority = 9;
     const specialtyTables = {};
     const addedStudents = new Set(); // Множество для хранения уникальных студентов
+    const grayCells = {}; // Хранит студентов, попадающих в серые ячейки
 
+    // Список допустимых специальностей, форм и финансирования
     const validSpecialties = [
         '39.02.01 Социальная работа',
         '43.02.16 Туризм и гостеприимство',
@@ -72,10 +74,8 @@ function distributeStudentsByPriority(data, showOriginalsOnly) {
         '54.01.20 Графический дизайнер',
         '54.02.06 Изобразительное искусство и черчение'
     ];
-
     const validForms = ['Oчнo', 'Заочно'];
     const validFundings = ['Бюджет', 'Коммерция'];
-    
     const specialtiesAllowingNoExam = [
         '39.02.01 Социальная работа',
         '43.02.16 Туризм и гостеприимство',
@@ -106,26 +106,53 @@ function distributeStudentsByPriority(data, showOriginalsOnly) {
                     student.priorityNumber = priority;
                     specialtyTables[specialtyKey].push(student);
                     addedStudents.add(student.name);
+                } else {
+                    // Помечаем студентов для серых ячеек
+                    if (!grayCells[student.name]) {
+                        grayCells[student.name] = [];
+                    }
+                    grayCells[student.name].push(student);
                 }
             }
         }
     }
 
-    // Если выбраны только оригиналы, то добавляем студентов с оригиналами до тех пор, пока их не станет 75
-    if (showOriginalsOnly) {
-        for (let specialtyKey in specialtyTables) {
-            const originalStudents = students.filter(student => student.provided === 'Оригинал' && !addedStudents.has(student.name));
-            for (const student of originalStudents) {
-                if (specialtyTables[specialtyKey].length < 75) {
-                    student.priorityNumber = student.priority;
-                    specialtyTables[specialtyKey].push(student);
-                    addedStudents.add(student.name);
+    // Дублирование студентов, попадающих в серые ячейки, по всем специальностям
+    const studentsInWhiteCells = new Set();
+    for (const key in specialtyTables) {
+        const studentsInTable = specialtyTables[key];
+        for (const student of studentsInTable) {
+            if (student.priorityNumber === 1) {
+                studentsInWhiteCells.add(student.name);
+            }
+        }
+    }
+
+    for (const studentName in grayCells) {
+        const studentList = grayCells[studentName];
+        for (const student of studentList) {
+            if (studentsInWhiteCells.has(student.name)) {
+                for (let priority = 2; priority <= maxPriority; priority++) { // Начинаем с приоритета 2
+                    if (student.priority === priority) {
+                        const specialtyKey = `${student.specialty}-${student.funding}-${student.form}`;
+                        
+                        if (!specialtyTables[specialtyKey]) {
+                            specialtyTables[specialtyKey] = [];
+                        }
+
+                        // Добавление студента в список до достижения 75 человек
+                        if (specialtyTables[specialtyKey].length < 75) {
+                            student.priorityNumber = priority;
+                            specialtyTables[specialtyKey].push(student);
+                            addedStudents.add(student.name);
+                        }
+                    }
                 }
             }
         }
     }
 
-    
+    // Заполняем оставшиеся места студентами, которые еще не попали в таблицы
     for (const student of students) {
         if (!addedStudents.has(student.name)) {
             for (let priority = 1; priority <= maxPriority; priority++) {
@@ -151,6 +178,8 @@ function distributeStudentsByPriority(data, showOriginalsOnly) {
 
     return specialtyTables;
 }
+
+
 
 
 // Функция для отображения таблиц
@@ -209,6 +238,7 @@ function displayTables(data) {
             const examCell = document.createElement('td');
             examCell.textContent = item.exam;
             row.appendChild(examCell);
+
             const fundingCell = document.createElement('td');
             fundingCell.textContent = item.funding;
             row.appendChild(fundingCell);
