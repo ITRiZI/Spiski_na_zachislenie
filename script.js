@@ -1,6 +1,22 @@
 let dataArray = [];
 let sortOrder = {};  // Для отслеживания порядка сортировки для каждой таблицы
 
+// Приоритеты специальностей
+const specialtyPriorities = {
+    '39.02.01 Социальная работа': 1,
+    '43.02.16 Туризм и гостеприимство': 2,
+    '44.02.01 Дошкольное образование': 3,
+    '44.02.02 Преподавание в начальных классах': 4,
+    '44.02.03 Педагогика дополнительного образования': 5,
+    '44.02.04 Специальное дошкольное образование': 6,
+    '44.02.05 Коррекционная педагогика в начальном образовании': 7,
+    '49.02.01 Физическая культура': 8,
+    '49.02.02 Адаптивная физическая культура': 9,
+    '53.02.01 Музыкальное образование': 10,
+    '54.01.20 Графический дизайнер': 11,
+    '54.02.06 Изобразительное искусство и черчение': 12
+};
+
 // Обработчик события для загрузки файла
 document.getElementById('fileInput').addEventListener('change', function(event) {
     const file = event.target.files[0];
@@ -53,10 +69,8 @@ function csvToArray(csv) {
 
 // Функция для распределения студентов по специальностям и формам обучения
 function distributeStudentsByAverageGrade(data, showOriginalsOnly) {
-    const maxStudentsPerTable = 75; // Максимальное количество студентов в таблице
     const specialtyTables = {};
     const addedStudents = new Set(); // Множество для хранения уникальных студентов
-    const grayCells = {}; // Хранит студентов, попадающих в серые ячейки
 
     // Список допустимых специальностей, форм и финансирования
     const validSpecialties = [
@@ -90,7 +104,7 @@ function distributeStudentsByAverageGrade(data, showOriginalsOnly) {
         (student.exam === 'Да' || (specialtiesAllowingNoExam.includes(student.specialty) && student.exam === 'Нет'))
     ).sort((a, b) => b.grade - a.grade); // Сортируем по убыванию оценки
 
-    // Создаем таблицы для каждого специальности и формы
+    // Создаем таблицы для каждой специальности и формы
     students.forEach(student => {
         if (!showOriginalsOnly || student.provided === 'Оригинал') {
             const specialtyKey = `${student.specialty}-${student.funding}-${student.form}`;
@@ -99,79 +113,11 @@ function distributeStudentsByAverageGrade(data, showOriginalsOnly) {
                 specialtyTables[specialtyKey] = [];
             }
 
-            // Добавляем студента в таблицу, если место еще есть
-            if (specialtyTables[specialtyKey].length < maxStudentsPerTable) {
-                student.priorityNumber = student.priority;
-                specialtyTables[specialtyKey].push(student);
-                addedStudents.add(student.name);
-            } else {
-                // Помечаем студентов для серых ячеек
-                if (!grayCells[student.name]) {
-                    grayCells[student.name] = [];
-                }
-                grayCells[student.name].push(student);
-            }
+            // Добавляем студента в таблицу
+            specialtyTables[specialtyKey].push(student);
+            addedStudents.add(student.name);
         }
     });
-
-    // Дублирование студентов, попадающих в серые ячейки
-    const studentsInWhiteCells = new Set();
-    for (const key in specialtyTables) {
-        const studentsInTable = specialtyTables[key];
-        for (const student of studentsInTable) {
-            if (student.priorityNumber === 1) {
-                studentsInWhiteCells.add(student.name);
-            }
-        }
-    }
-
-    for (const studentName in grayCells) {
-        const studentList = grayCells[studentName];
-        for (const student of studentList) {
-            if (studentsInWhiteCells.has(student.name)) {
-                for (let priority = 2; priority <= 9; priority++) { // Начинаем с приоритета 2
-                    if (student.priority === priority) {
-                        const specialtyKey = `${student.specialty}-${student.funding}-${student.form}`;
-                        
-                        if (!specialtyTables[specialtyKey]) {
-                            specialtyTables[specialtyKey] = [];
-                        }
-
-                        // Добавление студента в список до достижения 75 человек
-                        if (specialtyTables[specialtyKey].length < maxStudentsPerTable) {
-                            student.priorityNumber = priority;
-                            specialtyTables[specialtyKey].push(student);
-                            addedStudents.add(student.name);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Заполняем оставшиеся места студентами, которые еще не попали в таблицы
-    for (const student of students) {
-        if (!addedStudents.has(student.name)) {
-            for (let priority = 1; priority <= 9; priority++) {
-                if (student.priority === priority) {
-                    const specialtyKey = `${student.specialty}-${student.funding}-${student.form}`;
-                    
-                    if (!specialtyTables[specialtyKey]) {
-                        specialtyTables[specialtyKey] = [];
-                    }
-
-                    // Добавление студента в список до достижения 75 человек
-                    if (specialtyTables[specialtyKey].length < maxStudentsPerTable) {
-                        student.priorityNumber = priority;
-                        specialtyTables[specialtyKey].push(student);
-                        addedStudents.add(student.name);
-                    } else {
-                        break; // Прекращаем добавление, если достигли 75 человек
-                    }
-                }
-            }
-        }
-    }
 
     return specialtyTables;
 }
@@ -246,7 +192,7 @@ function displayTables(data) {
             row.appendChild(providedCell);
 
             const priorityNumberCell = document.createElement('td');
-            priorityNumberCell.textContent = item.priorityNumber;
+            priorityNumberCell.textContent = item.priority;
             row.appendChild(priorityNumberCell);
 
             tbody.appendChild(row);
@@ -255,14 +201,6 @@ function displayTables(data) {
         table.appendChild(thead);
         table.appendChild(tbody);
         outputDiv.appendChild(table);
-
-        // Добавить проверку, если студент не попал в топ-25
-        if (data[key].length > 25) {
-            for (let i = 25; i < data[key].length; i++) {
-                const row = tbody.childNodes[i];
-                row.style.backgroundColor = 'gray';
-            }
-        }
 
         // Добавление количества студентов и горизонтальной линии
         const countDiv = document.createElement('div');
