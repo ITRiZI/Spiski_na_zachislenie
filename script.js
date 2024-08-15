@@ -82,23 +82,16 @@ function csvToArray(csv) {
 // Функция для распределения студентов по специальностям и формам обучения
 function distributeStudentsByAverageGrade(data, showOriginalsOnly) {
     const specialtyTables = {};
-    const studentPriorityMap = {}; // Для отслеживания приоритета, в который студент был добавлен
-
-    const validSpecialties = Object.keys(specialtyPriorities);
-    const validForms = ['Oчнo', 'Заочно'];
-    const validFundings = ['Бюджет', 'Коммерция'];
+    const addedStudents = new Set(); // Множество для хранения уникальных студентов
 
     // Фильтрация студентов
     const students = data.filter(student =>
-        validSpecialties.includes(student.specialty) &&
-        validForms.includes(student.form) &&
-        validFundings.includes(student.funding) &&
         student.entranceExamResult !== 'Неявка' &&
         student.entranceExamResult !== 'Незач' &&
+        student.entranceExamResult !== 'Ожидается' &&
         (student.exam === 'Да' || student.entranceExamResult === 'Зачет' || student.entranceExamResult === 'Не предусмотрено')
-    ).sort((a, b) => b.grade - a.grade); // Сортировка по убыванию среднего балла
+    ).sort((a, b) => b.grade - a.grade); // Сортировка по убыванию оценки
 
-    // Белые ячейки: распределение студентов по их приоритетам
     students.forEach(student => {
         if (!showOriginalsOnly || student.provided === 'Оригинал') {
             const specialtyKey = `${student.specialty}-${student.funding}-${student.form}`;
@@ -107,38 +100,29 @@ function distributeStudentsByAverageGrade(data, showOriginalsOnly) {
                 specialtyTables[specialtyKey] = [];
             }
 
-            if (!studentPriorityMap[student.name] ||
-                specialtyPriorities[student.specialty] < specialtyPriorities[studentPriorityMap[student.name].specialty]) {
-
-                if (studentPriorityMap[student.name]) {
-                    // Удаление студента из предыдущей таблицы
-                    const prevKey = studentPriorityMap[student.name].key;
-                    specialtyTables[prevKey] = specialtyTables[prevKey].filter(s => s.name !== student.name);
-                }
-
-                specialtyTables[specialtyKey].push(student);
-                studentPriorityMap[student.name] = { key: specialtyKey, specialty: student.specialty };
-            }
-        }
-    });
-
-    // Серые ячейки: добавление студентов в серые ячейки, если они не были добавлены в белую ячейку по этому приоритету
-    students.forEach(student => {
-        if (!studentPriorityMap[student.name] || studentPriorityMap[student.name].specialty !== student.specialty) {
-            const specialtyKey = `${student.specialty}-${student.funding}-${student.form}`;
-
-            if (!specialtyTables[specialtyKey]) {
-                specialtyTables[specialtyKey] = [];
+            // Определяем максимальное количество белых ячеек
+            let maxWhiteCells = 25; // По умолчанию 25
+            if (student.specialty === '44.02.01 Дошкольное образование' && student.form === 'Очно' && student.funding === 'Бюджет') {
+                maxWhiteCells = 35;
             }
 
-            // Добавляем студента в серую ячейку
+            // Считаем текущее количество белых ячеек
+            const whiteCellCount = specialtyTables[specialtyKey].filter(s => s.cellColor === 'white').length;
+
+            // Распределение студентов в белые и серые ячейки
+            if (whiteCellCount < maxWhiteCells) {
+                student.cellColor = 'white';
+            } else {
+                student.cellColor = 'grey';
+            }
+
             specialtyTables[specialtyKey].push(student);
+            addedStudents.add(student.name);
         }
     });
 
     return specialtyTables;
 }
-
 
 // Функция для отображения таблиц
 function displayTables(data) {
@@ -186,7 +170,7 @@ function displayTables(data) {
             const deleteButton = document.createElement('button');
             deleteButton.textContent = 'Удалить';
             deleteButton.addEventListener('click', () => {
-                removeStudent(data, item.name);
+                removeStudentFromTable(data, key, item.name);
             });
             deleteCell.appendChild(deleteButton);
             row.appendChild(deleteCell);
@@ -242,6 +226,50 @@ function displayTables(data) {
     }
 }
 
+// Функция для удаления студента из одной таблицы и обновления белых ячеек
+function removeStudentFromTable(data, specialtyKey, studentName) {
+    // Удаляем студента из конкретной таблицы
+    data[specialtyKey] = data[specialtyKey].filter(student => student.name !== studentName);
+
+    // Если количество студентов в белых ячейках стало меньше 25, переносим первого студента из серых ячеек
+    if (data[specialtyKey].length < 25) {
+        const grayStudents = data[specialtyKey].filter(student => !student.white); // Находим всех студентов в серых ячейках
+        if (grayStudents.length > 0) {
+            const firstGrayStudent = grayStudents[0];
+            data[specialtyKey].push(firstGrayStudent);
+
+            // Удаляем этого студента из других серых ячеек в данной таблице
+            data[specialtyKey] = data[specialtyKey].filter(student => student.name !== firstGrayStudent.name || student.white);
+        }
+    }
+
+    // Перерисовываем таблицы
+    displayTables(data);
+}
+
+
+// Функция для удаления студента из одной таблицы и обновления белых ячеек
+function removeStudentFromTable(data, specialtyKey, studentName) {
+    // Удаляем студента из конкретной таблицы
+    data[specialtyKey] = data[specialtyKey].filter(student => student.name !== studentName);
+
+    // Если количество студентов в белых ячейках стало меньше 25, переносим первого студента из серых ячеек
+    if (data[specialtyKey].length < 25) {
+        const grayStudents = data[specialtyKey].filter(student => student.cellColor === 'grey'); // Находим всех студентов в серых ячейках
+        if (grayStudents.length > 0) {
+            const firstGrayStudent = grayStudents[0];
+            data[specialtyKey].push(firstGrayStudent);
+
+            // Удаляем этого студента из других серых ячеек в данной таблице
+            data[specialtyKey] = data[specialtyKey].filter(student => student.name !== firstGrayStudent.name || student.cellColor === 'white');
+        }
+    }
+
+    // Перерисовываем таблицы
+    displayTables(data);
+}
+
+// Функция для удаления студента из всех таблиц и перераспределения студентов
 function removeStudent(data, studentName) {
     const studentPriorityMap = {};
 
@@ -272,8 +300,6 @@ function removeStudent(data, studentName) {
 
     displayTables(data);
 }
-
-
 
 // Функция для переключения порядка сортировки и сортировки данных
 function toggleSortOrder(data, specialtyKey, columnIndex) {
