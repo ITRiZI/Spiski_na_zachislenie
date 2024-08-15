@@ -1,7 +1,25 @@
 let dataArray = [];
 let sortOrder = {}; // Для отслеживания порядка сортировки для каждой таблицы
 
-// Приоритеты специальностей
+// Определение правил для окрашивания строк
+const specialtyColorRules = {
+    // Бюджет
+    '44.02.01 Дошкольное образование': { form: 'Oчнo', funding: 'Бюджет', startIndex: 35+1 },
+    '44.02.01 Дошкольное образование': { form: 'Заочно', funding: 'Бюджет', startIndex: 20+1 },
+    // Коммерция
+    '44.02.01 Дошкольное образование': { form: 'Oчнo', funding: 'Коммерция', startIndex: 15+1 },
+    '44.02.02 Преподавание в начальных классах': { form: 'Oчнo', funding: 'Коммерция', startIndex: 5+1 },
+    '44.02.04 Специальное дошкольное образования': { form: 'Oчнo', funding: 'Коммерция', startIndex: 5+1 },
+    '44.02.05 Коррекционная педагогика в начальном образовании': { form: 'Oчнo', funding: 'Коммерция', startIndex: 5+1 },
+    '44.02.03 Педагогика дополнительного образования': { form: 'Oчнo', funding: 'Коммерция', startIndex: 5+1 },
+    '49.02.02 Адаптивная физическая культура': { form: 'Oчнo', funding: 'Коммерция', startIndex: 5+1 },
+    '53.02.01 Музыкальное образование': { form: 'Oчнo', funding: 'Коммерция', startIndex: 5+1 },
+    '54.02.06 Изобразительное искусство и черчение': { form: 'Oчнo', funding: 'Коммерция', startIndex: 5+1 },
+    '44.02.01 Дошкольное образование': { form: 'Заочно', funding: 'Коммерция', startIndex: 5+1 },
+    // Добавьте другие специальности и их правила
+};
+
+// Определение приоритетов специальностей
 const specialtyPriorities = {
     '39.02.01 Социальная работа': 1,
     '43.02.16 Туризм и гостеприимство': 2,
@@ -82,16 +100,23 @@ function csvToArray(csv) {
 // Функция для распределения студентов по специальностям и формам обучения
 function distributeStudentsByAverageGrade(data, showOriginalsOnly) {
     const specialtyTables = {};
-    const addedStudents = new Set(); // Множество для хранения уникальных студентов
+    const studentPriorityMap = {}; // Для отслеживания приоритета, в который студент был добавлен
+
+    const validSpecialties = Object.keys(specialtyPriorities);
+    const validForms = ['Oчнo', 'Заочно'];
+    const validFundings = ['Бюджет', 'Коммерция'];
 
     // Фильтрация студентов
     const students = data.filter(student =>
+        validSpecialties.includes(student.specialty) &&
+        validForms.includes(student.form) &&
+        validFundings.includes(student.funding) &&
         student.entranceExamResult !== 'Неявка' &&
         student.entranceExamResult !== 'Незач' &&
-        student.entranceExamResult !== 'Ожидается' &&
         (student.exam === 'Да' || student.entranceExamResult === 'Зачет' || student.entranceExamResult === 'Не предусмотрено')
-    ).sort((a, b) => b.grade - a.grade); // Сортировка по убыванию оценки
+    ).sort((a, b) => b.grade - a.grade); // Сортировка по убыванию среднего балла
 
+    // Белые ячейки: распределение студентов по их приоритетам
     students.forEach(student => {
         if (!showOriginalsOnly || student.provided === 'Оригинал') {
             const specialtyKey = `${student.specialty}-${student.funding}-${student.form}`;
@@ -100,24 +125,32 @@ function distributeStudentsByAverageGrade(data, showOriginalsOnly) {
                 specialtyTables[specialtyKey] = [];
             }
 
-            // Определяем максимальное количество белых ячеек
-            let maxWhiteCells = 25; // По умолчанию 25
-            if (student.specialty === '44.02.01 Дошкольное образование' && student.form === 'Очно' && student.funding === 'Бюджет') {
-                maxWhiteCells = 35;
+            if (!studentPriorityMap[student.name] ||
+                specialtyPriorities[student.specialty] < specialtyPriorities[studentPriorityMap[student.name].specialty]) {
+
+                if (studentPriorityMap[student.name]) {
+                    // Удаление студента из предыдущей таблицы
+                    const prevKey = studentPriorityMap[student.name].key;
+                    specialtyTables[prevKey] = specialtyTables[prevKey].filter(s => s.name !== student.name);
+                }
+
+                specialtyTables[specialtyKey].push(student);
+                studentPriorityMap[student.name] = { key: specialtyKey, specialty: student.specialty };
+            }
+        }
+    });
+
+    // Серые ячейки: добавление студентов в серые ячейки, если они не были добавлены в белую ячейку по этому приоритету
+    students.forEach(student => {
+        if (!studentPriorityMap[student.name] || studentPriorityMap[student.name].specialty !== student.specialty) {
+            const specialtyKey = `${student.specialty}-${student.funding}-${student.form}`;
+
+            if (!specialtyTables[specialtyKey]) {
+                specialtyTables[specialtyKey] = [];
             }
 
-            // Считаем текущее количество белых ячеек
-            const whiteCellCount = specialtyTables[specialtyKey].filter(s => s.cellColor === 'white').length;
-
-            // Распределение студентов в белые и серые ячейки
-            if (whiteCellCount < maxWhiteCells) {
-                student.cellColor = 'white';
-            } else {
-                student.cellColor = 'grey';
-            }
-
+            // Добавляем студента в серую ячейку
             specialtyTables[specialtyKey].push(student);
-            addedStudents.add(student.name);
         }
     });
 
@@ -135,14 +168,7 @@ function displayTables(data) {
         const tbody = document.createElement('tbody');
 
         const headerRow = document.createElement('tr');
-
-        // Добавляем новый заголовок для номера
-        const numberHeader = document.createElement('th');
-        numberHeader.textContent = '№';
-        headerRow.appendChild(numberHeader);
-
-        // Остальные заголовки
-        ['Удалить', 'Name', 'Specialty', 'Grade', 'Exam', 'Funding', 'Form', 'Provided', 'Priority Number', 'Entrance Exam Result'].forEach((text, index) => {
+        ['№', 'Удалить', 'Name', 'Specialty', 'Grade', 'Exam', 'Funding', 'Form', 'Provided', 'Priority Number', 'Entrance Exam Result'].forEach((text) => {
             const th = document.createElement('th');
             th.textContent = text;
             if (text === 'Grade') {
@@ -150,7 +176,7 @@ function displayTables(data) {
                 arrowSpan.classList.add('arrow');
                 th.appendChild(arrowSpan);
                 th.addEventListener('click', () => {
-                    toggleSortOrder(data, key, index);
+                    toggleSortOrder(data, key, 4); // Column index for Grade is 4
                 });
             }
             headerRow.appendChild(th);
@@ -159,57 +185,36 @@ function displayTables(data) {
 
         data[key].forEach((item, index) => {
             const row = document.createElement('tr');
+            // Добавление данных в ячейки
+            const cells = [
+                index + 1, // №
+                'Удалить', // Действие
+                item.name,
+                item.specialty,
+                item.grade.toFixed(2),
+                item.exam,
+                item.funding,
+                item.form,
+                item.provided,
+                item.priority,
+                item.entranceExamResult
+            ];
 
-            // Добавляем ячейку с номером
-            const numberCell = document.createElement('td');
-            numberCell.textContent = index + 1;
-            row.appendChild(numberCell);
-
-            // Добавляем ячейку с кнопкой удаления
-            const deleteCell = document.createElement('td');
-            const deleteButton = document.createElement('button');
-            deleteButton.textContent = 'Удалить';
-            deleteButton.addEventListener('click', () => {
-                removeStudentFromTable(data, key, item.name);
+            cells.forEach((cellData, i) => {
+                const cell = document.createElement('td');
+                if (i === 1) {
+                    // Создание кнопки "Удалить"
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = cellData;
+                    deleteButton.addEventListener('click', () => {
+                        removeStudent(data, key, item.name);
+                    });
+                    cell.appendChild(deleteButton);
+                } else {
+                    cell.textContent = cellData;
+                }
+                row.appendChild(cell);
             });
-            deleteCell.appendChild(deleteButton);
-            row.appendChild(deleteCell);
-
-            const nameCell = document.createElement('td');
-            nameCell.textContent = item.name;
-            row.appendChild(nameCell);
-
-            const specialtyCell = document.createElement('td');
-            specialtyCell.textContent = item.specialty;
-            row.appendChild(specialtyCell);
-
-            const gradeCell = document.createElement('td');
-            gradeCell.textContent = item.grade.toFixed(2);
-            row.appendChild(gradeCell);
-
-            const examCell = document.createElement('td');
-            examCell.textContent = item.exam;
-            row.appendChild(examCell);
-
-            const fundingCell = document.createElement('td');
-            fundingCell.textContent = item.funding;
-            row.appendChild(fundingCell);
-
-            const formCell = document.createElement('td');
-            formCell.textContent = item.form;
-            row.appendChild(formCell);
-
-            const providedCell = document.createElement('td');
-            providedCell.textContent = item.provided;
-            row.appendChild(providedCell);
-
-            const priorityNumberCell = document.createElement('td');
-            priorityNumberCell.textContent = item.priority;
-            row.appendChild(priorityNumberCell);
-
-            const entranceExamResultCell = document.createElement('td');
-            entranceExamResultCell.textContent = item.entranceExamResult;
-            row.appendChild(entranceExamResultCell);
 
             tbody.appendChild(row);
         });
@@ -218,87 +223,48 @@ function displayTables(data) {
         table.appendChild(tbody);
         outputDiv.appendChild(table);
 
-        // Добавление количества студентов и горизонтальной линии
-        const countDiv = document.createElement('div');
-        countDiv.textContent = `Количество студентов: ${data[key].length}`;
-        outputDiv.appendChild(countDiv);
-        outputDiv.appendChild(document.createElement('hr'));
+        // Установка цвета строк после определенного номера
+        setRowColors(tbody, specialtyColorRules, 26);
     }
 }
 
-// Функция для удаления студента из одной таблицы и обновления белых ячеек
-function removeStudentFromTable(data, specialtyKey, studentName) {
-    // Удаляем студента из конкретной таблицы
-    data[specialtyKey] = data[specialtyKey].filter(student => student.name !== studentName);
+// Функция для удаления студента
+function removeStudent(data, specialtyKey, studentName) {
+    if (data[specialtyKey]) {
+        // Удаление студента из массива
+        data[specialtyKey] = data[specialtyKey].filter(student => student.name !== studentName);
 
-    // Если количество студентов в белых ячейках стало меньше 25, переносим первого студента из серых ячеек
-    if (data[specialtyKey].length < 25) {
-        const grayStudents = data[specialtyKey].filter(student => !student.white); // Находим всех студентов в серых ячейках
-        if (grayStudents.length > 0) {
-            const firstGrayStudent = grayStudents[0];
-            data[specialtyKey].push(firstGrayStudent);
-
-            // Удаляем этого студента из других серых ячеек в данной таблице
-            data[specialtyKey] = data[specialtyKey].filter(student => student.name !== firstGrayStudent.name || student.white);
+        // Если после удаления таблица пустая, удаляем ключ
+        if (data[specialtyKey].length === 0) {
+            delete data[specialtyKey];
         }
-    }
 
-    // Перерисовываем таблицы
-    displayTables(data);
+        // Перерисовываем таблицы
+        displayTables(data);
+    }
 }
 
+function setRowColors(tbody, specialtyColorRules, defaultStartIndex) {
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.forEach((row, index) => {
+        const specialtyCell = row.cells[3].textContent;
+        const formCell = row.cells[7].textContent;
+        const fundingCell = row.cells[6].textContent;
+        
+        // Определяем startIndex на основе правила или используем значение по умолчанию
+        const colorRule = Object.keys(specialtyColorRules).find(key =>
+            specialtyCell.includes(key) &&
+            (formCell === specialtyColorRules[key].form || !specialtyColorRules[key].form) &&
+            (fundingCell === specialtyColorRules[key].funding || !specialtyColorRules[key].funding)
+        );
 
-// Функция для удаления студента из одной таблицы и обновления белых ячеек
-function removeStudentFromTable(data, specialtyKey, studentName) {
-    // Удаляем студента из конкретной таблицы
-    data[specialtyKey] = data[specialtyKey].filter(student => student.name !== studentName);
-
-    // Если количество студентов в белых ячейках стало меньше 25, переносим первого студента из серых ячеек
-    if (data[specialtyKey].length < 25) {
-        const grayStudents = data[specialtyKey].filter(student => student.cellColor === 'grey'); // Находим всех студентов в серых ячейках
-        if (grayStudents.length > 0) {
-            const firstGrayStudent = grayStudents[0];
-            data[specialtyKey].push(firstGrayStudent);
-
-            // Удаляем этого студента из других серых ячеек в данной таблице
-            data[specialtyKey] = data[specialtyKey].filter(student => student.name !== firstGrayStudent.name || student.cellColor === 'white');
+        const startIndex = colorRule ? specialtyColorRules[colorRule].startIndex : defaultStartIndex;
+        
+        // Устанавливаем цвет фона
+        if (index >= startIndex - 1) {
+            row.style.backgroundColor = 'lightcoral'; // Красный цвет для серых ячеек
         }
-    }
-
-    // Перерисовываем таблицы
-    displayTables(data);
-}
-
-// Функция для удаления студента из всех таблиц и перераспределения студентов
-function removeStudent(data, studentName) {
-    const studentPriorityMap = {};
-
-    // Найти все вхождения студента в белые и серые ячейки и удалить его
-    for (const key in data) {
-        data[key] = data[key].filter(student => {
-            if (student.name === studentName) {
-                studentPriorityMap[student.name] = student.specialty;
-            }
-            return student.name !== studentName;
-        });
-    }
-
-    // Перераспределение студентов: Пополнение белых ячеек до 25
-    for (const key in data) {
-        if (data[key].length < 25) {
-            const grayStudents = data[key].filter(student => student.specialty !== studentPriorityMap[student.name]);
-            if (grayStudents.length > 0) {
-                const firstGrayStudent = grayStudents[0];
-                data[key].push(firstGrayStudent);
-                // Удаляем студента из серой ячейки
-                for (const otherKey in data) {
-                    data[otherKey] = data[otherKey].filter(student => student.name !== firstGrayStudent.name);
-                }
-            }
-        }
-    }
-
-    displayTables(data);
+    });
 }
 
 // Функция для переключения порядка сортировки и сортировки данных
@@ -309,51 +275,20 @@ function toggleSortOrder(data, specialtyKey, columnIndex) {
 
     // Сортировка данных в зависимости от выбранного столбца
     data[specialtyKey].sort((a, b) => {
-        if (columnIndex === 2) { // Сортировка по столбцу "Grade"
-            return newOrder === 'desc' ? b.grade - a.grade : a.grade - b.grade;
+        const aValue = Object.values(a)[columnIndex];
+        const bValue = Object.values(b)[columnIndex];
+        if (newOrder === 'asc') {
+            return aValue > bValue ? 1 : -1;
+        } else {
+            return aValue < bValue ? 1 : -1;
         }
     });
 
-    // Перерисовка таблиц с новым порядком
+    // Перерисовываем таблицы
     displayTables(data);
 }
 
-// Функция для скачивания таблиц в формате PDF
+// Функция для скачивания PDF
 function downloadPDF() {
-    const tables = document.querySelectorAll('table');
-    const pdf = new jsPDF('p', 'pt', 'a4');
-
-    tables.forEach((table, tableIndex) => {
-        const rows = Array.from(table.querySelectorAll('tr')).map(tr =>
-            Array.from(tr.querySelectorAll('th, td')).map(td => td.innerText)
-        );
-
-        const pageHeight = pdf.internal.pageSize.height;
-
-        pdf.autoTable({
-            head: [rows[0]],
-            body: rows.slice(1),
-            startY: tableIndex === 0 ? 20 : pdf.lastAutoTable.finalY + 20,
-            theme: 'grid',
-            tableWidth: 'auto',
-            margin: { top: 30 },
-            styles: { fontSize: 8 },
-            didDrawPage: function(data) {
-                if (tableIndex === 0) {
-                    pdf.text(`Specialty: ${table.querySelector('caption').innerText}`, 14, 10);
-                }
-                let str = 'Page ' + pdf.internal.getNumberOfPages();
-                if (tableIndex !== tables.length - 1) {
-                    str += ' of ' + tables.length;
-                }
-                pdf.text(str, pdf.internal.pageSize.width - 40, pdf.internal.pageSize.height - 30);
-            }
-        });
-
-        if (pdf.lastAutoTable.finalY >= pageHeight - 20) {
-            pdf.addPage();
-        }
-    });
-
-    pdf.save('tables.pdf');
+    // Реализация для генерации и скачивания PDF
 }
