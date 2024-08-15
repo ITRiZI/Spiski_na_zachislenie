@@ -107,6 +107,7 @@ document.getElementById('originalsOnlyCheckbox').addEventListener('change', func
 // Обработчик события для скачивания PDF
 document.getElementById('downloadPDFButton').addEventListener('click', downloadPDF);
 
+
 // Функция для преобразования CSV в массив объектов
 function csvToArray(csv) {
     const rows = csv.trim().split('\n');
@@ -128,8 +129,11 @@ function csvToArray(csv) {
             entranceExamResult: entranceExamResult
         };
     });
-    return data;
+
+    // Удаляем студентов с "Ожидается" в Entrance Exam Result
+    return data.filter(student => student.entranceExamResult !== 'Ожидается');
 }
+
 
 // Функция для распределения студентов по специальностям и формам обучения
 function distributeStudentsByAverageGrade(data, showOriginalsOnly) {
