@@ -136,6 +136,7 @@ function csvToArray(csv) {
 
 
 // Функция для распределения студентов по специальностям и формам обучения
+// Функция для распределения студентов по специальностям и формам обучения
 function distributeStudentsByAverageGrade(data, showOriginalsOnly) {
     const specialtyTables = {};
     const studentPriorityMap = {}; // Для отслеживания приоритета, в который студент был добавлен
@@ -194,6 +195,7 @@ function distributeStudentsByAverageGrade(data, showOriginalsOnly) {
 
     return specialtyTables;
 }
+
 
 // Функция для отображения таблиц
 function displayTables(data) {
