@@ -1,81 +1,95 @@
 let dataArray = [];
-let sortOrder = {}; // Для отслеживания порядка сортировки для каждой таблицы
+let sortOrder = {};  // Для отслеживания порядка сортировки для каждой таблицы
 
 // Определение правил для окрашивания строк
-// Определение правил для окрашивания строк
-const specialtyColorRules = {
+const colorRules = {
     '44.02.01 Дошкольное образование': {
         'Бюджет': {
-            'Oчнo': { startIndex: 36 },
-            'Заочно': { startIndex: 21 }
+            'Oчнo': 35,
+            'Заочно': 20
         },
         'Коммерция': {
-            'Oчнo': { startIndex: 16 },
-            'Заочно': { startIndex: 6 }
+            'Oчнo': 15,
+            'Заочно': 5
         }
     },
-    '44.02.02 Преподавание в начальных классах': {
-        'Коммерция': {
-            'Oчнo': { startIndex: 6 }
+    '43.02.16 Туризм и гостеприимство': {
+        'Бюджет': {
+            'Oчнo': 25,
         }
     },
-    '44.02.04 Специальное дошкольное образование': {
+    '44.02.02 Преподавание в начальных классах':{
+        'Бюджет': {
+            'Oчнo': 25,
+        },
         'Коммерция': {
-            'Oчнo': { startIndex: 6 }
+            'Oчнo': 5,
         }
     },
-    '44.02.05 Коррекционная педагогика в начальном образовании': {
+    '44.02.04 Специальное дошкольное образования':{
+        'Бюджет': {
+            'Oчнo': 25,
+        },
         'Коммерция': {
-            'Oчнo': { startIndex: 6 }
+            'Oчнo': 5,
         }
     },
-    '44.02.03 Педагогика дополнительного образования': {
+    '44.02.03 Педагогика дополнительного образования':{
+        'Бюджет': {
+            'Oчнo': 25,
+        },
         'Коммерция': {
-            'Oчнo': { startIndex: 6 }
+            'Oчнo': 5,
         }
     },
-    '49.02.02 Адаптивная физическая культура': {
+    '53.02.01 Музыкальное образование':{
+        'Бюджет': {
+            'Oчнo': 25,
+        },
         'Коммерция': {
-            'Oчнo': { startIndex: 6 }
+            'Oчнo': 5,
         }
     },
-    '53.02.01 Музыкальное образование': {
+    '49.02.02 Адаптивная физическая культура':{
+        'Бюджет': {
+            'Oчнo': 25,
+        },
         'Коммерция': {
-            'Oчнo': { startIndex: 6 }
+            'Oчнo': 5,
         }
     },
-    '54.02.06 Изобразительное искусство и черчение': {
-        'Коммерция': {
-            'Oчнo': { startIndex: 6 }
+    '39.02.01 Социальная работа':{
+        'Бюджет': {
+            'Oчнo': 25,
         }
-    }
-    // Добавьте другие специальности и их правила
+    },
+    '44.02.05 Коррекционная педагогика в начальном образовании':{
+        'Бюджет': {
+            'Oчнo': 25,
+        },
+        'Коммерция': {
+            'Oчнo': 5,
+        }
+    },
+    '54.02.06 Изобразительное искусство и черчение':{
+        'Бюджет': {
+            'Oчнo': 25,
+        },
+        'Коммерция': {
+            'Oчнo': 5,
+        }
+    },
+    '49.02.01 Физическая культура':{
+        'Коммерция': {
+            'Oчнo': 25,
+        }
+    },
+    '54.01.20 Графический дизайнер':{
+        'Коммерция': {
+            'Oчнo': 25,
+        }
+    },
 };
-
-
-// Определение приоритетов специальностей
-const specialtyPriorities = {
-    '39.02.01 Социальная работа': 1,
-    '43.02.16 Туризм и гостеприимство': 2,
-    '44.02.01 Дошкольное образование': 3,
-    '44.02.02 Преподавание в начальных классах': 4,
-    '44.02.03 Педагогика дополнительного образования': 5,
-    '44.02.04 Специальное дошкольное образование': 6,
-    '44.02.05 Коррекционная педагогика в начальном образовании': 7,
-    '49.02.01 Физическая культура': 8,
-    '49.02.02 Адаптивная физическая культура': 9,
-    '53.02.01 Музыкальное образование': 10,
-    '54.01.20 Графический дизайнер': 11,
-    '54.02.06 Изобразительное искусство и черчение': 12
-};
-
-// Специальности, для которых статус "Не предусмотрено"
-const noExamSpecialties = [
-    '43.02.16 Туризм и гостеприимство',
-    '54.01.20 Графический дизайнер',
-    '39.02.01 Социальная работа',
-    '44.02.03 Педагогика дополнительного образования'
-];
 
 // Обработчик события для загрузки файла
 document.getElementById('fileInput').addEventListener('change', function(event) {
@@ -93,20 +107,19 @@ document.getElementById('fileInput').addEventListener('change', function(event) 
 // Обработчик события для показа таблиц
 document.getElementById('showTablesButton').addEventListener('click', function() {
     const showOriginalsOnly = document.getElementById('originalsOnlyCheckbox').checked;
-    const sortedData = distributeStudentsByAverageGrade(dataArray, showOriginalsOnly);
+    const sortedData = distributeStudentsByPriority(dataArray, showOriginalsOnly);
     displayTables(sortedData);
 });
 
 // Обработчик изменения состояния чекбокса
 document.getElementById('originalsOnlyCheckbox').addEventListener('change', function() {
     const showOriginalsOnly = this.checked;
-    const sortedData = distributeStudentsByAverageGrade(dataArray, showOriginalsOnly);
+    const sortedData = distributeStudentsByPriority(dataArray, showOriginalsOnly);
     displayTables(sortedData);
 });
 
 // Обработчик события для скачивания PDF
 document.getElementById('downloadPDFButton').addEventListener('click', downloadPDF);
-
 
 // Функция для преобразования CSV в массив объектов
 function csvToArray(csv) {
@@ -114,88 +127,77 @@ function csvToArray(csv) {
     const headers = rows[0].split(';').map(header => header.replace(/"/g, '').trim());
     const data = rows.slice(1).map(row => {
         const values = row.split(';').map(value => value.replace(/"/g, '').trim());
-        const specialty = values[1];
-        const entranceExamResult = noExamSpecialties.includes(specialty) ? 'Не предусмотрено' : values[8];
-
         return {
             name: values[0],
-            specialty: specialty,
+            specialty: values[1],
             grade: parseFloat(values[2].replace(',', '.')),
             exam: values[3],
             priority: parseInt(values[4], 10),
             funding: values[5],
             form: values[6],
             provided: values[7],
-            entranceExamResult: entranceExamResult
+            entranceExamResult: values[8]  // Добавляем поле для результатов вступительных испытаний
         };
     });
-
-    // Удаляем студентов с "Ожидается" в Entrance Exam Result
-    return data.filter(student => student.entranceExamResult !== 'Ожидается');
+    return data;
 }
 
-
-// Функция для распределения студентов по специальностям и формам обучения
-// Функция для распределения студентов по специальностям и формам обучения
-function distributeStudentsByAverageGrade(data, showOriginalsOnly) {
+// Функция для распределения студентов по приоритетам
+function distributeStudentsByPriority(data, showOriginalsOnly) {
     const specialtyTables = {};
-    const studentPriorityMap = {}; // Для отслеживания приоритета, в который студент был добавлен
+    const addedStudents = new Set();
 
-    const validSpecialties = Object.keys(specialtyPriorities);
+    const validSpecialties = [
+        '39.02.01 Социальная работа',
+        '43.02.16 Туризм и гостеприимство',
+        '44.02.01 Дошкольное образование',
+        '44.02.02 Преподавание в начальных классах',
+        '44.02.03 Педагогика дополнительного образования',
+        '44.02.04 Специальное дошкольное образование',
+        '44.02.05 Коррекционная педагогика в начальном образовании',
+        '49.02.01 Физическая культура',
+        '49.02.02 Адаптивная физическая культура',
+        '53.02.01 Музыкальное образование',
+        '54.01.20 Графический дизайнер',
+        '54.02.06 Изобразительное искусство и черчение'
+    ];
+
     const validForms = ['Oчнo', 'Заочно'];
     const validFundings = ['Бюджет', 'Коммерция'];
+    
+    const specialtiesAllowingNoExam = [
+        '39.02.01 Социальная работа',
+        '43.02.16 Туризм и гостеприимство',
+        '44.02.03 Педагогика дополнительного образования',
+        '54.01.20 Графический дизайнер'
+    ];
 
-    // Фильтрация студентов
-    const students = data.filter(student =>
+    // Отфильтровать студентов по критериям, включая результаты вступительных испытаний
+    const students = data.filter(student => 
         validSpecialties.includes(student.specialty) &&
         validForms.includes(student.form) &&
         validFundings.includes(student.funding) &&
-        student.entranceExamResult !== 'Неявка' &&
-        student.entranceExamResult !== 'Незач' &&
-        (student.exam === 'Да' || student.entranceExamResult === 'Зачет' || student.entranceExamResult === 'Не предусмотрено')
-    ).sort((a, b) => b.grade - a.grade); // Сортировка по убыванию среднего балла
+        (student.entranceExamResult === 'Зачет' || student.entranceExamResult === 'Не предусмотрено') &&
+        (student.exam === 'Да' || (specialtiesAllowingNoExam.includes(student.specialty) && student.exam === 'Нет'))
+    ).sort((a, b) => b.grade - a.grade);
 
-    // Белые ячейки: распределение студентов по их приоритетам
-    students.forEach(student => {
+    // Создаем таблицы для каждого приоритета
+    for (const student of students) {
         if (!showOriginalsOnly || student.provided === 'Оригинал') {
             const specialtyKey = `${student.specialty}-${student.funding}-${student.form}`;
-
+            
             if (!specialtyTables[specialtyKey]) {
                 specialtyTables[specialtyKey] = [];
             }
 
-            if (!studentPriorityMap[student.name] ||
-                specialtyPriorities[student.specialty] < specialtyPriorities[studentPriorityMap[student.name].specialty]) {
-
-                if (studentPriorityMap[student.name]) {
-                    // Удаление студента из предыдущей таблицы
-                    const prevKey = studentPriorityMap[student.name].key;
-                    specialtyTables[prevKey] = specialtyTables[prevKey].filter(s => s.name !== student.name);
-                }
-
-                specialtyTables[specialtyKey].push(student);
-                studentPriorityMap[student.name] = { key: specialtyKey, specialty: student.specialty };
-            }
-        }
-    });
-
-    // Серые ячейки: добавление студентов в серые ячейки, если они не были добавлены в белую ячейку по этому приоритету
-    students.forEach(student => {
-        if (!studentPriorityMap[student.name] || studentPriorityMap[student.name].specialty !== student.specialty) {
-            const specialtyKey = `${student.specialty}-${student.funding}-${student.form}`;
-
-            if (!specialtyTables[specialtyKey]) {
-                specialtyTables[specialtyKey] = [];
-            }
-
-            // Добавляем студента в серую ячейку
+            student.priorityNumber = student.priority;
             specialtyTables[specialtyKey].push(student);
+            addedStudents.add(student.name);
         }
-    });
+    }
 
     return specialtyTables;
 }
-
 
 // Функция для отображения таблиц
 function displayTables(data) {
@@ -208,7 +210,7 @@ function displayTables(data) {
         const tbody = document.createElement('tbody');
 
         const headerRow = document.createElement('tr');
-        ['№', 'Удалить', 'Name', 'Specialty', 'Grade', 'Exam', 'Funding', 'Form', 'Provided', 'Priority Number', 'Entrance Exam Result'].forEach((text) => {
+        ['№', 'Name', 'Specialty', 'Grade', 'Exam', 'Funding', 'Form', 'Provided', 'Entrance Exam Result', 'Priority Number'].forEach((text, index) => {
             const th = document.createElement('th');
             th.textContent = text;
             if (text === 'Grade') {
@@ -216,7 +218,7 @@ function displayTables(data) {
                 arrowSpan.classList.add('arrow');
                 th.appendChild(arrowSpan);
                 th.addEventListener('click', () => {
-                    toggleSortOrder(data, key, 4); // Column index for Grade is 4
+                    toggleSortOrder(data, key, index);
                 });
             }
             headerRow.appendChild(th);
@@ -225,37 +227,55 @@ function displayTables(data) {
 
         data[key].forEach((item, index) => {
             const row = document.createElement('tr');
-            // Добавление данных в ячейки
-            const cells = [
-                index + 1, // №
-                'Удалить', // Действие
-                item.name,
-                item.specialty,
-                item.grade.toFixed(2),
-                item.exam,
-                item.funding,
-                item.form,
-                item.provided,
-                item.priority,
-                item.entranceExamResult
-            ];
+            const numberCell = document.createElement('td');
+            numberCell.textContent = index + 1;
+            row.appendChild(numberCell);
 
-            cells.forEach((cellData, i) => {
-                const cell = document.createElement('td');
-                if (i === 1) {
-                    // Создание кнопки "Удалить"
-                    const deleteButton = document.createElement('button');
-                    deleteButton.textContent = cellData;
-                    deleteButton.addEventListener('click', () => {
-                        removeStudent(data, key, item.name);
-                    });
-                    cell.appendChild(deleteButton);
-                } else {
-                    cell.textContent = cellData;
-                }
-                row.appendChild(cell);
-            });
+            const nameCell = document.createElement('td');
+            nameCell.textContent = item.name;
+            row.appendChild(nameCell);
 
+            const specialtyCell = document.createElement('td');
+            specialtyCell.textContent = item.specialty;
+            row.appendChild(specialtyCell);
+
+            const gradeCell = document.createElement('td');
+            gradeCell.textContent = item.grade.toFixed(2);
+            row.appendChild(gradeCell);
+
+            const examCell = document.createElement('td');
+            examCell.textContent = item.exam;
+            row.appendChild(examCell);
+            
+            const fundingCell = document.createElement('td');
+            fundingCell.textContent = item.funding;
+            row.appendChild(fundingCell);
+
+            const formCell = document.createElement('td');
+            formCell.textContent = item.form;
+            row.appendChild(formCell);
+
+            const providedCell = document.createElement('td');
+            providedCell.textContent = item.provided;
+            row.appendChild(providedCell);
+
+            const entranceExamResultCell = document.createElement('td');
+            entranceExamResultCell.textContent = item.entranceExamResult;  // Добавляем ячейку для результатов вступительных испытаний
+            row.appendChild(entranceExamResultCell);
+
+            const priorityNumberCell = document.createElement('td');
+            priorityNumberCell.textContent = item.priorityNumber;
+            row.appendChild(priorityNumberCell);
+
+            let rowColor = '';
+            const [specialty, funding, form] = key.split('-');
+            const threshold = (colorRules[specialty] && colorRules[specialty][funding] && colorRules[specialty][funding][form]) || Infinity;
+            
+            if (index >= threshold) {
+                rowColor = 'background-color: #ffcccc;';
+            }
+
+            row.style = rowColor;
             tbody.appendChild(row);
         });
 
@@ -263,77 +283,72 @@ function displayTables(data) {
         table.appendChild(tbody);
         outputDiv.appendChild(table);
 
-        // Установка цвета строк после определенного номера
-        setRowColors(tbody, specialtyColorRules, 26);
+        const countDiv = document.createElement('div');
+        countDiv.classList.add('student-count');
+        countDiv.textContent = `Total students: ${data[key].length}`;
+        outputDiv.appendChild(countDiv);
+
+        const hr = document.createElement('hr');
+        outputDiv.appendChild(hr);
     }
 }
 
-// Функция для удаления студента
-function removeStudent(data, specialtyKey, studentName) {
-    if (data[specialtyKey]) {
-        // Удаление студента из массива
-        data[specialtyKey] = data[specialtyKey].filter(student => student.name !== studentName);
+// Функция для переключения порядка сортировки
+function toggleSortOrder(data, key, index) {
+    let sortOrder = dataArray.sortOrder || {};
+    let order = sortOrder[key] || 'desc';
+    let newOrder = order === 'desc' ? 'asc' : 'desc';
+    sortOrder[key] = newOrder;
 
-        // Если после удаления таблица пустая, удаляем ключ
-        if (data[specialtyKey].length === 0) {
-            delete data[specialtyKey];
+    data[key].sort((a, b) => {
+        if (index === 2) { // Столбец Grade
+            return newOrder === 'asc' ? a.grade - b.grade : b.grade - a.grade;
         }
-
-        // Перерисовываем таблицы
-        displayTables(data);
-    }
-}
-
-function setRowColors(tbody, specialtyColorRules, defaultStartIndex) {
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    rows.forEach((row, index) => {
-        const specialtyCell = row.cells[3].textContent.trim();
-        const formCell = row.cells[7].textContent.trim();
-        const fundingCell = row.cells[6].textContent.trim();
-        
-        // Определяем startIndex на основе правила или используем значение по умолчанию
-        let startIndex = defaultStartIndex;
-
-        if (specialtyColorRules[specialtyCell]) {
-            const fundingRules = specialtyColorRules[specialtyCell][fundingCell];
-            if (fundingRules) {
-                const formRule = fundingRules[formCell];
-                if (formRule) {
-                    startIndex = formRule.startIndex;
-                }
-            }
-        }
-
-        // Устанавливаем цвет фона
-        if (index >= startIndex - 1) {
-            row.style.backgroundColor = 'lightcoral'; // Красный цвет для серых ячеек
-        }
-    });
-}
-
-
-// Функция для переключения порядка сортировки и сортировки данных
-function toggleSortOrder(data, specialtyKey, columnIndex) {
-    const order = sortOrder[specialtyKey] || 'asc'; // По умолчанию порядок "asc"
-    const newOrder = order === 'asc' ? 'desc' : 'asc';
-    sortOrder[specialtyKey] = newOrder;
-
-    // Сортировка данных в зависимости от выбранного столбца
-    data[specialtyKey].sort((a, b) => {
-        const aValue = Object.values(a)[columnIndex];
-        const bValue = Object.values(b)[columnIndex];
-        if (newOrder === 'asc') {
-            return aValue > bValue ? 1 : -1;
-        } else {
-            return aValue < bValue ? 1 : -1;
-        }
+        return 0;
     });
 
-    // Перерисовываем таблицы
+    dataArray.sortOrder = sortOrder;
     displayTables(data);
 }
 
-// Функция для скачивания PDF
-function downloadPDF() {
-    // Реализация для генерации и скачивания PDF
+// Функция для создания и скачивания PDF
+async function downloadPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const tables = document.querySelectorAll('#output table');
+    let yOffset = 10;
+
+    for (const table of tables) {
+        const headers = [];
+        const rows = [];
+
+        table.querySelectorAll('thead th').forEach(th => {
+            headers.push(th.textContent);
+        });
+
+        table.querySelectorAll('tbody tr').forEach(tr => {
+            const row = [];
+            tr.querySelectorAll('td').forEach(td => {
+                row.push(td.textContent);
+            });
+            rows.push(row);
+        });
+
+        doc.autoTable({
+            head: [headers],
+            body: rows,
+            startY: yOffset,
+            theme: 'striped',
+            styles: {
+                font: 'Roboto',
+                cellPadding: 2,
+                overflow: 'linebreak'
+            }
+        });
+
+        yOffset = doc.autoTable.previous.finalY + 10;
+    }
+
+    doc.save('students.pdf');
 }
