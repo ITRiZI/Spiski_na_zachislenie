@@ -1,5 +1,5 @@
 let dataArray = [];
-let sortOrder = {};  // Для отслеживания порядка сортировки для каждой таблицы
+let sortOrder = {};
 
 // Определение правил для окрашивания строк
 const colorRules = {
@@ -210,7 +210,7 @@ function displayTables(data) {
         const tbody = document.createElement('tbody');
 
         const headerRow = document.createElement('tr');
-        ['№', 'Name', 'Specialty', 'Grade', 'Exam', 'Funding', 'Form', 'Provided', 'Entrance Exam Result', 'Priority Number'].forEach((text, index) => {
+        ['№', 'Name', 'Specialty', 'Grade', 'Exam', 'Funding', 'Form', 'Provided', 'Entrance Exam Result', 'Priority Number', 'Action'].forEach((text, index) => {
             const th = document.createElement('th');
             th.textContent = text;
             if (text === 'Grade') {
@@ -267,6 +267,16 @@ function displayTables(data) {
             priorityNumberCell.textContent = item.priorityNumber;
             row.appendChild(priorityNumberCell);
 
+            // Добавляем кнопку удаления
+            const actionCell = document.createElement('td');
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Удалить';
+            deleteButton.addEventListener('click', () => {
+                removeStudentFromTable(data, key, index);
+            });
+            actionCell.appendChild(deleteButton);
+            row.appendChild(actionCell);
+
             let rowColor = '';
             const [specialty, funding, form] = key.split('-');
             const threshold = (colorRules[specialty] && colorRules[specialty][funding] && colorRules[specialty][funding][form]) || Infinity;
@@ -293,7 +303,13 @@ function displayTables(data) {
     }
 }
 
-// Функция для переключения порядка сортировки
+// Функция для удаления студента из определенной таблицы
+function removeStudentFromTable(data, key, index) {
+    data[key].splice(index, 1); // Удаляем студента из конкретной таблицы
+    displayTables(data); // Перерисовываем таблицы
+}
+
+// Функция для сортировки таблиц
 function toggleSortOrder(data, key, index) {
     let sortOrder = dataArray.sortOrder || {};
     let order = sortOrder[key] || 'desc';
@@ -301,7 +317,7 @@ function toggleSortOrder(data, key, index) {
     sortOrder[key] = newOrder;
 
     data[key].sort((a, b) => {
-        if (index === 2) { // Столбец Grade
+        if (index === 3) { // Столбец Grade
             return newOrder === 'asc' ? a.grade - b.grade : b.grade - a.grade;
         }
         return 0;
